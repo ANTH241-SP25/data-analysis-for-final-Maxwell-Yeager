@@ -1,0 +1,460 @@
+---
+title: "Anth. 241 data analysis"
+output: html_document
+date: "2025-04-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+1.1 generate descriptive statistics for all of my variables (note, for my depression scores I will only generate one ordinal [feel_bad] and one continuous [DPQ_score] which is in line with my original proposal) 
+```{r}
+#1.1.1 descriptive statistics for continuous variables 
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+#1.1.1.2 summarize age
+NHANES2017_18 %>%
+  summarize(mean(age), sd(age), count=n())
+
+ggplot(NHANES2017_18, aes(x=age)) + 
+  geom_histogram() + 
+  labs(title = "histogram of age", x="", y="")
+#1.1.1.2 summarize DPQ_score
+NHANES2017_18%>%
+  summarize(mean(DPQ_score), sd(DPQ_score), count=n())
+
+ggplot(NHANES2017_18, aes(x=DPQ_score)) + 
+  geom_histogram() + 
+  labs(title = "histogram of depression screener score", x="", y="")
+#1.1.1.3 summarize ratio of family income to poverty
+NHANES2017_18%>%
+  summarize(mean(RFITP), sd(RFITP), count=n())
+
+ggplot(NHANES2017_18, aes(x=RFITP)) + 
+  geom_histogram() + 
+  labs(title = "histogram of ratio of family income to poverty", x="", y="")
+```
+Results from 1.1.1: 
+Among 3166 individuals in this data set, the mean age is 50.43 years with a standard deviation of 17.71 years. 
+Among 3166 individuals in this data set, the mean depression score is 5.24 with a standard deviation of 4.75. 
+Among 3166 individuals in this data set, the mean ratio of family income to poverty is [ERROR]
+
+1.2, descriptive statistics for categorical variables. 
+```{r}
+library(questionr)
+#1.2.1 descriptive statistics for race
+count(NHANES2017_18, race)
+race_count <- with(NHANES2017_18, table(race))
+prop.table(race_count)
+prop.table(race_count)*100
+ggplot(NHANES2017_18, aes(x=race)) + geom_bar(fill = "purple") + labs(title = "numbers of racial groups", x="", y="")
+```
+In this data set:
+ -403 individuals are mexican american, making up 12.73% of the total population
+ -349 individuals are non hispanic asian, making up 11.02% of the total population
+ -720 individuals are non hispanic black, making up 22.74% of the total population
+ -1210 individuals are non hispanic white, making up 38.22% of the total population
+ -293 individuals are other hispanic, making up 9.41% of the total population
+ -186 individuals are an other race or mixed race, 5.87% of the total population
+
+
+```{r}
+#1.2.2 descriptive statistics for gender
+count(NHANES2017_18, gender)
+gender_count <- with(NHANES2017_18, table(gender))
+prop.table(gender_count)
+prop.table(gender_count)*100
+ggplot(NHANES2017_18, aes(x=gender)) + geom_bar(fill = "purple") + labs(title = "gender breakdown", x="", y="")
+```
+In this data set:
+-1403 individuals identify as male, making up 44.31% of the population
+-1763 individuals identify as female, making up 55.69% of the population
+
+```{r}
+#1.2.3 descriptive statistics for education level
+count(NHANES2017_18, education_level)
+education_count <- with(NHANES2017_18, table(education_level))
+prop.table(education_count)
+prop.table(education_count)*100
+ggplot(NHANES2017_18, aes(x=education_level)) + geom_bar(fill = "purple") + labs(title = "education levels", x="", y="")
+```
+In this data set:
+-228 individuals have less than a 9th grade education, making up 7.2% of the total population
+-364 individuals have some highschool education, but no diploma, making up 11.5% of the total population
+-772 individuals have a highschool diploma or equivalent document, 24.38% of the total population
+-1108 individuals have some college experience, making up 35% of the total population
+-694 individuals have a college degree or more educational experience, making up 21.92% of the total population
+
+```{r}
+#1.2.4 descriptive statistics for feel_bad
+count(NHANES2017_18, feel_bad)
+mental_count <- with(NHANES2017_18, table(feel_bad))
+prop.table(mental_count)
+prop.table(mental_count)*100
+ggplot(NHANES2017_18, aes(x=feel_bad)) + geom_bar(fill = "purple") + labs(title = "amount of times feeling bad", x="", y="")
+```
+In this data set:
+-2006 individuals reported not feeling down depressed or hopeless in the past 2 weeks, making up 63.36% of the population
+-790 individuals reported feeling down depressed or hopeless several days in the past 2 weeks, making up 24.95%% of the population
+-210 individuals reported feeling down depressed or hopeless more than half of the days in the past 2 weeks, making up 6.63% % of the population
+160 individuals reported feeling down depressed or hopeless nearly every day in the past 2 weeks, making up 5.05% of the population
+
+Lets run all of our bivariate statistics!!! (who else is scared?)
+
+lets start by addin the packages I need
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(dunn.test)
+```
+
+2.1 T-Tests explore whether a continuous variable differs across categorical variables. For this test we will use our continuous dependent variable DPQ_score across the categorical variable of gender. 
+
+2.1.1: gender and depression score. 
+-null hypothesis: there is no signifigant difference in depression score between genders
+-alternative hypothesis: there is a signifigant difference in depression score between genders
+```{r}
+#1, what are the means, standard deviations, and counts for age by gender?
+NHANES2017_18 %>% 
+  group_by(gender) %>% 
+  summarize(mean(DPQ_score), sd(DPQ_score), count=n())
+#2 F-test to see if the variance in the continuous variiable is the same for the different levels of the categorical variable
+var.test(DPQ_score~gender, data = NHANES2017_18, alternative = "two.sided")
+#3 run the T-test 
+t.test(DPQ_score ~ gender, var.equal=TRUE, data = NHANES2017_18)
+#4, histogram of continuous variable: 
+hist(NHANES2017_18$DPQ_score)
+#5 make a box and whisker plot to graph these results
+ggplot(NHANES2017_18, aes(x=gender, y=DPQ_score))+
+  geom_boxplot(fill="green")+
+  labs(x="Gender",
+       y="depression score",
+       title="PHQ-9 score by gender")
+```
+results! 
+-the mean depression score for men is 4.95 with a standard deviation of 4.65
+-the mean depression score for women is 5.46 with a standard deviation of 4.82
+-the p value for the t-test is 0.003, which means this difference is significant. 
+conclusion: this data supports the alternative hypothesis that there is significant difference in the average depression score based on gender. Specifically, women experience a higher average depression score than men. 
+
+
+2.2 chi square test
+
+The chi square test lets me compare two categorical variables. For this test we will compare our dependent variable feel_bad representing how many days one has felt bad over the past two weeks with the following independent variables: race, education level, and gender
+
+2.2.1 feel_bad compared to gender
+alternative hypothesis: there is no significant difference in the frequencies of days felt bad by gender
+```{r}
+#a. make a descriptive stats table
+feelbad_gender <- xtabs(~feel_bad + gender, data = NHANES2017_18)
+feelbad_gender
+prop.table(feelbad_gender)*100
+#b. run the Chi-square test on that table.
+chisq.test(feelbad_gender)
+```
+conclusions:
+- these results are not significant with a p value of 0.053. These results support the null hypothesis that there is not a significant difference in time spent feeling bad by gender.
+
+2.2.2 feel_bad compared to race
+null hypothesis: there is no difference in the amount of time spent feeling bad by race
+alterative hypothesis: there is a signiicant difference in the amount of time feeling bad by race
+```{r}
+#a. make a descriptive stats table
+feelbad_race <- xtabs(~feel_bad + race, data = NHANES2017_18)
+feelbad_race
+prop.table(feelbad_race)*100
+#b. run the Chi-square test on that table.
+chisq.test(feelbad_race)
+```
+conclusions:
+these results are significant with a p value of 0.0003. These results support the alternative hypothesis that time spent feeling bad signigicantly varies based on race. 
+
+2.2.3 feel_bad by education_level
+```{r}
+#generate descriptive statsitics
+feelbad_education <- xtabs(~feel_bad + education_level, data = NHANES2017_18)
+feelbad_education
+prop.table(feelbad_education)*100
+#b. run the Chi-square test on that table.
+chisq.test(feelbad_education)
+```
+conclusions: these results are significant with a p value of 9.612e-13. These results support the alternative hypothesis that time spent feeling bad varies sigificantly based on education level. 
+
+2.3 ANOVA or Kruskal Wallis Dunn test
+
+The Kruskal Wallis Dunn test lets me test if there is significant difference in a continuous variable across many categorical levels when the continuous variable is not normally distributed. In this case, we will use it to test if there is a difference in our continuous dependent variable, DPQ_score across tw0 categorical dependent variables: race and education. We will also use DPQ_score as an independent variable to see if different categories experience poverty at different rates using RFITP and to be different ages.   
+
+2.3.1 lets test DPQ_score across racial categories. 
+-null hypothesis: there is no signifigant difference in PHQ9 scores between racial categories. 
+-alternative hypothesis: there is a signifigant difference in PHQ9 scores between raical categories. 
+```{r}
+#1. Generate summary statistics of DPQ_score by race
+NHANES2017_18 %>% 
+  group_by(race) %>% 
+  summarize(mean(DPQ_score), sd(DPQ_score), count=n())
+#2. Generate a boxplot of DPQ_score by race
+ggplot(NHANES2017_18, aes(x=race, y=DPQ_score))+
+  geom_boxplot(fill="darkblue")+
+  labs(x="race",
+       y="PHQ9 score",
+       title="PHQ9 score by race")
+#3. Run the Kruskal-Wallis test and the post-hoc Dunn test to see if there are any significant differences in DPQ_score by race 
+dunn.test(x=NHANES2017_18$DPQ_score, g=NHANES2017_18$race, kw=TRUE)
+```
+results!
+-among Mexican Americans, the average depression score is 5.43 with a standard deviation of 4.82
+-among non Hispanic asians the average depression score is 4.03 with a standard deviation of 3.75
+-among non Hispanic blacks, the average depression score is 5.1 with a standard deviation of 4.58
+-among non Hispanic whites, the average depression score is 5.42 with a standard deviation of 4.92
+-among other Hispanics, the average depression score is 5.46 with a standard deviation of 4.85
+-among other races (including mixed race individuals), the average depression score is 6.04 with a standard deviation of 5.25. 
+conclusions:
+The KW test is significant with a p value of 0. lets look at which comparisons are signifigant.
+- compared to every other racial category, non Hispanic Asians experience signifigantly lower average scores.
+- the only other significant comparison is non hispanic black to other races with a p value of 0.02, meaning that other races and interracial groups experience significantly higher depression scores compared to black individuals. 
+In general this data supports the alternative hypothesis that PHQ9 scores vary signifigantly based on race. However in most cases there is no significant difference. Rather, the alternative hypothesis is only supported for non hispanic asians, who experience significantly lower scores than all other races, and for other races and interracial indivdiuals, who experience significantly higher scores compared only to black individuals.  
+
+2.3.2 - depression levels across educational level
+null hypothesis: there is no significant difference in depression levels across education levels
+alternative hypothesis: there is a significant difference in depression levels across education levels
+
+```{r}
+#1. Generate summary statistics of DPQ_score by education level
+NHANES2017_18 %>%   
+  group_by(education_level) %>% 
+  summarize(mean(DPQ_score), sd(DPQ_score), count=n())
+#2. Generate a boxplot of DPQ_score by education level
+NHANES2017_18$education_level <- factor(NHANES2017_18$education_level)
+ggplot(NHANES2017_18, aes(x=education_level, y=DPQ_score))+
+  geom_boxplot(fill="darkred")+
+  labs(x="education level",
+       y="PHQ9 score",
+       title="PHQ9 score by education level")
+#3. Run the Kruskal-Wallis test and the post-hoc Dunn test to see if there are any significant differences in DPQ_score by education level
+dunn.test(x=NHANES2017_18$DPQ_score, g=NHANES2017_18$education_level, kw=TRUE)
+```
+results: 
+- among those with less than a 9th grade education the average depression score is 6.74 with a standard deviation of 5.62
+-among those with some high school but no diploma the average depression score is 6.11 with a standard deviation of 5.22
+-among those with a highschool diploma the average depression score is 5.61 with a standard deviation of 4.98
+-among those with some college but no diploma the average depression score is 5.19 with a standard deviation of 4.61
+-among those with a college degree the average depression score is 3.94 with a standard deviation of 3.74 
+
+conclusions:
+The KW test is signifigant with a p value of 0. 
+The dunn test reveals that the following relationships are significant:
+- those with a college degree experience significant lower depression scores than all other grouops
+- those with some college experience significantly lower depression scores than those with some or no highschool education
+-  those with a highschool diploma experience significantly lower depression scores than those with no highschool education
+
+these results support the alternative hypothesis that there is a significant difference in depression scores between education levels. Specifically those with a higher education level are experience significantly higher average depression scores than those with a lower education level.  
+
+2.3.3 RFITP across depression levels
+Null hypothesis: there is no difference in RFITP across amount of time feeling bad
+alternative hypothesis: there is a significant difference in RFITP across amount of time feeling bad
+```{r}
+#1. Generate summary statistics of RFITP by feel_bad
+NHANES2017_18 %>%  
+  drop_na(RFITP)%>%
+  group_by(feel_bad) %>% 
+  summarize(mean(RFITP), sd(RFITP), count=n())
+#2. Generate a boxplot of RFITP by feel_bad
+NHANES2017_18$feel_bad <- factor(NHANES2017_18$feel_bad)
+ggplot(NHANES2017_18, aes(x=feel_bad, y=RFITP))+
+  geom_boxplot(fill="darkred")+
+  labs(x="time feeling depressed",
+       y="Ratio of family income to poverty",
+       title="time feeling depressed by RFITP")
+#3. Run the Kruskal-Wallis test and the post-hoc Dunn test to see if there are any significant differences in RFITP by feel_bad
+dunn.test(x=NHANES2017_18$RFITP, g=NHANES2017_18$feel_bad, kw=TRUE)
+```
+results:
+- among those who reported not feeling bad at all over the past two weeks the mean RFITP was 2.64 with a standard deviation of 1.6
+-among those who reported feeling bad several days over the past two weeks the mean RFITP was 2.27 with a standard deviation of 1.55
+-among those who reported feeling bad over half of the days in the past two weeks the mean RFITP was 1.85 with a standard deviation of 1.35 
+-among those who reported feeling bad nearly every day in the past two weeks the mean RFITP was 1.84 with a standard deviation of 1.39
+
+conclusions:
+these results are significant with a p value of 0. The relationship between every group execpt for between those who felt bad over half of the days and nearly every day is significant. These results support the alternative hypothesis that RFITP changes significantly between groups who spent different amounts of time feeling bad. Specifically, those who spend more time feeling bad experience a lower average RFITP. 
+
+2.3.4 age across depression levels
+null hypothesis: there is no significant difference in average age by time feeling bad
+alternative hypothesis: there is a signifiicant difference in average age by time feeling bad
+```{r}
+#1. Generate summary statistics of age by time feeling bad
+NHANES2017_18 %>%   
+  group_by(feel_bad) %>% 
+  summarize(mean(age), sd(age), count=n())
+#2. Generate a boxplot of age by time spent feeling bad
+ggplot(NHANES2017_18, aes(x=feel_bad, y=age))+
+  geom_boxplot(fill="darkred")+
+  labs(x="time spent feeling bad",
+       y="age",
+       title="age by time spent feeling bad")
+#3. Run the Kruskal-Wallis test and the post-hoc Dunn test to see if there are any significant differences in age by time spent feeling bad
+dunn.test(x=NHANES2017_18$age, g=NHANES2017_18$feel_bad, kw=TRUE)
+```
+results:
+- among those who reported not feeling bad at all over the past two weeks the average age was 50.66 with a standard deviation of 17.96
+- among those who reported feeling bad several days over the past two weeks the average age was 49.32 with a standard deviation of 17.8 
+- among those who reported feeling bad more than half the days over the past two weeks the average age was 50.88 with a standard deviation of 16.47 
+- among those who reported feeling bad nearly every day over the past two weeks the average age was 52.56 with a standard deviation of 15.97 
+
+conclusions:
+these results are not significant with a p value of 0.1. The only significant difference is between those who felt bad several days and nearly every day and those who felt bad several days and not at all. However, in general these results support the null hypothesis that there is no significant difference in average age by time feeling bad. 
+
+
+2.4 correlation
+
+Correlations allow me to compare two continuous variables. For these tests I'll be comparing my dependent variable DPQ_score with two  continuous independent variables: age, RFITP
+
+2.4.1 DPQ_score with age 
+null hypothesis: there is no significant relationship between age and depression score
+alternative hypothesis: there is a significant relationship between age and depression score
+```{r}
+# a. plot data
+ggplot(aes(x=age, y=DPQ_score), data=NHANES2017_18) +
+  geom_point(color="green")+
+  geom_smooth(method = lm, color="blue")+
+  labs(x="age", y="PHQ9 score")+
+  theme_bw()
+
+#b. run a pearson correlation test
+cor.test(NHANES2017_18$age, NHANES2017_18$DPQ_score, method = "pearson")
+```
+Results: 
+- the pearson correlation coefficient between age and depression score is 0.01. 
+- This correlation is not significant with a p value of 0.5.
+
+This data supports the null hypothesis that there is no significant relationship between age and depression score.
+
+2.4.2 depression score with RFITP
+null hypothesis: there is no significant relationship between depression score and ratio of family income to poverty
+alternative hypothesis: there is a significant relationship between depression score and ratio of family income to poverty. 
+
+```{r}
+# a. plot data
+ggplot(aes(x=RFITP, y=DPQ_score), data=NHANES2017_18) +
+  geom_point(color="green")+
+  geom_smooth(method = lm, color="blue")+
+  labs(x="ratio of family income to poverty", y="PHQ9 score")+
+  theme_bw()
+
+#b. run a pearson correlation test
+cor.test(NHANES2017_18$RFITP, NHANES2017_18$DPQ_score, method = "pearson")
+```
+results:
+- the pearson correlation coefficient between depression score and RFITP is -0.2
+- this relationship is significant with a P value of 2.2e-16
+
+conclusions:
+This data supports the alternative hypothesis that there is a significant relationship between RFITP and depression score. Specifically, this relationship is slightly negative. 
+
+2.5 linear regression 
+similar to the correlations, regressions let me create a formula to predict a continuous dependent variable from a continuous independent variable. Because my data just showed a significant relationship between RFITP and depression score, we will use a linear regression to create a predictive model.
+```{r}
+DPQ_RFITP_Fit <- lm(DPQ_score~RFITP, data = NHANES2017_18)
+summary(DPQ_RFITP_Fit)
+```
+regression model:
+- DPQ_score = 6.63 + RFITP(-0.6)
+multiple r squared value:
+- 0.04
+p value: 
+- 2.2e-16
+
+conclusions:
+- These results indicate that depression score can be accurately predicted by RFITP only 4% of the time. However the P value of 2.2e-16 indicates that this relationship is significant. 
+
+Last thing is the odds ratio 
+3.1 odds ratio 
+
+odds ratios let me examine the odds that different groups will develop a certain condition. In my case, we will create a new "yes no" variable that tells me if a subject does or does not have depression and test the odds for the following groups: gender, race, and education level. 
+```{r}
+#download necessary packages first
+library(epitools)
+library(ggmosaic)
+```
+
+Now I will make my new variable called depressionYN. According to the designers of the PHQ 9 test, a score of 10 represents moderate depression. I'll use this score to create my variable. 
+```{r}
+NHANES2017_18$depressionYN[NHANES2017_18$DPQ_score <= 10] <- "no"
+NHANES2017_18$depressionYN[NHANES2017_18$DPQ_score > 10] <- "yes"
+factor(c(NHANES2017_18$depressionYN, levels=c("no", "yes")))
+head(NHANES2017_18)
+```
+Sick. Now that our new variable has been created, lets run our tests. First up is gender
+
+3.1.1 odds ratio of depressionYN by gender
+```{r}
+#1. Create the odds table:
+GenderOdds <- table(NHANES2017_18$gender, NHANES2017_18$depressionYN)
+#2. Run the oddsratio on the table:
+oddsratio(GenderOdds)
+#3. Graph the results in a mosaic table:
+ggplot(data = NHANES2017_18)+
+  geom_mosaic(aes(x=product(gender),
+                  fill=depressionYN),
+              na.rm = TRUE,
+              show.legend = FALSE)+
+  labs(title = "Odds of Moderate Depression by Gender",
+       x="Gender",
+       y="Moderate Depression")
+```
+results:
+- compared to men, women are more likely to have a depression score of 10 or higher with an odds ratio of 1.25. 
+- these results are significant with a p value of 0.04
+
+3.1.2 odds ratio of depressionYN with race
+```{r}
+#1. Create the odds table:
+RaceOdds <- table(NHANES2017_18$race, NHANES2017_18$depressionYN)
+#2. Run the oddsratio on the table:
+oddsratio(RaceOdds)
+#3. Graph the results in a mosaic table:
+ggplot(data = NHANES2017_18)+
+  geom_mosaic(aes(x=product(race),
+                  fill=depressionYN),
+              na.rm = TRUE,
+              show.legend = FALSE)+
+  labs(title = "Odds of Moderate Depression by Race",
+       x="Race",
+       y="Moderate Depression")
+```
+results: 
+- compared to Mexican Americans, non hispanic asians are less likely to be depressed with an odds ratio of 0.53
+- compared to Mexican Americans, non hispanic blacks are less likely to be depressed with an odds ratio of 0.97
+- compared to Mexican Americans, non hispanic whites are more likely to be depressed with an odds ratio of 1.06
+- compared to Mexican Americans, other hispanics are more likely to be depressed with an odds ratio of 1.02
+- compared to Mexican Americans, other races (including mixed races) are more likely to be depressed with an odds ratio of 1.48
+
+- These results are not significant with the exception of Non Hispanic Asians, which has a p value of 0.01. all other p values are higher than 0.05, indicating they are not significant. 
+
+3.1.3 odds ratio of depressionYN with education_level
+```{r}
+#1. Create the odds table:
+EducationOdds <- table(NHANES2017_18$education_level, NHANES2017_18$depressionYN)
+#2. Run the oddsratio on the table:
+oddsratio(EducationOdds)
+#3. Graph the results in a mosaic table:
+ggplot(data = NHANES2017_18)+
+  geom_mosaic(aes(x=product(education_level),
+                  fill=depressionYN),
+              na.rm = TRUE,
+              show.legend = FALSE)+
+  labs(title = "Odds of Moderate Depression by Education Level",
+       x="Education Level",
+       y="Moderate depression")
+```
+results:
+- compared to individuals with less than 9th grade education, individuals with some highschool experience are less likely to be depressed with an odds ratio of 0.75
+- compared to individuals with less than 9th grade education, individuals with a highschool diploma are less likely to be depressed with an odds ratio 0.64
+- compared to individuals with less than 9th grade education, individuals with some college are less likely to be depressed with an odds ratio of 0.62
+- compared to individuals with less than 9th grade education, individuals with a college diploma are less likely to be depressed with an odds ratio of 0.3
+
+- these results are all significant with the exception of the ratio between no highschool and some highschool. 
